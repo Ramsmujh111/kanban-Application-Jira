@@ -1,0 +1,53 @@
+# Render Blueprint — deploys backend + frontend as separate services
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ─── Backend (Web Service) ───────────────────────────────
+  - type: web
+    name: taskflow-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false  # You'll set this manually in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a random secret
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_URL
+        value: https://taskflow-kanban.onrender.com  # Update after frontend deploys
+
+  # ─── Frontend (Static Site) ─────────────────────────────
+  - type: web
+    name: taskflow-frontend
+    runtime: static
+    region: oregon
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://taskflow-api.onrender.com/api  # Update after backend deploys
+      - key: VITE_SOCKET_URL
+        value: https://taskflow-api.onrender.com
