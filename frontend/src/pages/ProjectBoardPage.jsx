@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchProject, addMember } from '../store/projectSlice';
@@ -22,11 +22,15 @@ const ProjectBoardPage = () => {
   const { emitTaskCreate, emitTaskUpdate, emitTaskMove, emitTaskDelete, emitCommentAdd } = useSocket(projectId);
 
   const [showMemberModal, setShowMemberModal] = useState(false);
+  const initialLoad = useRef(true);
 
   useEffect(() => {
     if (projectId) {
+      initialLoad.current = true;
       dispatch(fetchProject(projectId)).unwrap().catch(() => navigate('/dashboard'));
-      dispatch(fetchTasks(projectId));
+      dispatch(fetchTasks(projectId)).finally(() => {
+        initialLoad.current = false;
+      });
     }
     return () => {
       dispatch(clearTasks());
@@ -62,7 +66,8 @@ const ProjectBoardPage = () => {
     (m) => m.user?._id || m.user
   ) || [];
 
-  if (!currentProject || loading) {
+  // Only block render on the very first load — not on background re-fetches during DnD
+  if (!currentProject || (loading && initialLoad.current)) {
     return (
       <>
         <Header title="Loading..." />
